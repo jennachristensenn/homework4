@@ -1,0 +1,207 @@
+---
+title: "Data Manipulation"
+format: pdf
+editor: visual
+---
+
+```{r, results = "hide", warning = FALSE, message = FALSE}
+#install.packages("tidyverse")
+#install.packages("tinytex")
+#install.packages("lubridate")
+#install.packages("readxl")
+#install.packages("readr")
+library(tidyverse)
+library(tinytex)
+library(lubridate)
+library(readxl)
+library(readr)
+```
+
+
+## Task 1: Conceptual Questions
+
+1. If your working directory is myfolder/homework/, what relative path would you specify to get the file located at myfolder/MyData.csv?
+
+> The realtive path would be ../MyData.csv
+
+2. What are the major benefits of using R projects?
+
+> R projects are helpful becuase they're their own wokring environment, they connect directly with Github, and it makes projects easy to share or colaborate on becuase everything is in one place.
+
+3. What is git and what is github?
+
+> Git is what lives on your local computer and tracks changes locally. It then allows you to upload and merge uploaded copies to github. Github is the website where we create repsoitories and keeps the revision history of code. 
+
+4. What are the two main differences between a tibble and a data.frame?
+
+> A tibble prints output in a uniform and concise way that. Additionally, they do not coerce down to a vector when you subset to only one column using
+
+5. Rewrite the following nested function call using BaseR’s chaining operator:
+
+> as_tibble(iris) |>
+  select(starts_with("Petal"),Species) |>
+  filter(Petal.Length < 1.55) |>
+  arrange(Species)
+
+## Task 2: Reading Delimited Data
+
+# Glass Data
+
+1. Reading glass data from URL
+```{r}
+glass_data <-read_csv("https://www4.stat.ncsu.edu/~online/datasets/glass.data", 
+         col_names = c("ID", "RI", "Na", "Mg", "Al", "Si", "K", "Ca", "Ba", "Fe", "Type.of.Glass"))
+glass_data
+```
+
+2. Starting a chain to overwrite data
+```{r}
+glass_data_mutate <- glass_data |>
+  mutate(Type.of.Glass = factor(Type.of.Glass,
+                       levels = c(1, 2, 3, 4, 5, 6, 7),
+                       labels = c("building_windows_float_processed", 
+                                  "building_windows_non_float_processed",
+                                  "vehicle_windows_float_processed",
+                                  "vehicle_windows_non_float_processed",
+                                  "containers",
+                                  "tableware",
+                                  "headlamps")))
+glass_data_mutate
+```
+
+3. Continuing the chain to filter down the data 
+```{r}
+glass_data_filter <- glass_data |>
+  mutate(Type.of.Glass = factor(Type.of.Glass,
+                       levels = c(1, 2, 3, 4, 5, 6, 7),
+                       labels = c("building_windows_float_processed", 
+                                  "building_windows_non_float_processed",
+                                  "vehicle_windows_float_processed",
+                                  "vehicle_windows_non_float_processed",
+                                  "containers",
+                                  "tableware",
+                                  "headlamps"))) |>
+  filter(Fe < 0.2 & Type.of.Glass %in% c("tableware", "headlamps"))
+
+glass_data_filter
+
+```
+
+# Yeast Data
+
+1. Reading yeast data from URL
+```{r}
+yeast_data <- read_delim("https://www4.stat.ncsu.edu/online/datasets/yeast.data",
+                       delim = "  ",
+                       col_names = c("seq_name", "mcg", "gvh", "alm", "mit", "erl", "pox", "vac", "nuc", "class"))
+yeast_data
+```
+
+2. Starting a chain to remove columns
+```{r}
+yeast_data_select <- yeast_data |>
+  select(-seq_name, -nuc)
+
+yeast_data_select
+```
+
+3. Continuing the chain to add grouping and columns
+```{r}
+yeast_data_stats <- yeast_data |>
+  select(-seq_name, -nuc) |>
+  group_by(class) |>
+  mutate(across(where(is.numeric), list(mean = mean, median = median), .names = "{.col}_{.fn}"))
+
+yeast_data_stats
+```
+
+## Task 3:  Combining Excel & Delimited Data
+
+1. Reading in white wine data from first sheet
+```{r}
+white_wine <- read_excel("white-wine.xlsx",
+                         sheet = excel_sheets("white-wine.xlsx")[1])
+white_wine
+```
+
+2. Reading in variable names from second sheet and replacing col names
+```{r}
+white_wine_var <- read_excel("white-wine.xlsx",
+                         sheet = excel_sheets("white-wine.xlsx")[2])
+#white_wine_var
+
+wine_names <- white_wine_var[[1]]
+
+colnames(white_wine) <- wine_names
+
+white_wine
+```
+
+3. Adding in a white wine col
+```{r}
+white_wine_final <- white_wine |>
+  mutate(color = "white")
+
+white_wine_final
+```
+
+4. Reading in the red wine data and adding color column
+```{r}
+red_wine <- read_delim("https://www4.stat.ncsu.edu/~online/datasets/red-wine.csv",
+                       delim = ";")
+#red_wine
+
+colnames(red_wine) <- wine_names
+red_wine
+
+red_wine_final <- red_wine |>
+  mutate(color = "red")
+
+red_wine_final
+```
+
+5. Combining wine datasets
+```{r}
+wine_data <- dplyr::bind_rows(white_wine_final, red_wine_final)
+wine_data
+```
+
+6. Starting chain to filter data
+```{r}
+wine_data_filter <- wine_data |>
+  filter(quality > 6.5 & alcohol < 132) 
+
+wine_data_filter 
+```
+
+7. Continuing chain to sort
+```{r}
+wine_data_filter <- wine_data |>
+  filter(quality > 6.5 & alcohol < 132) |>
+  arrange(desc(quality))
+
+wine_data_filter 
+```
+
+8. Continuing chain to filter
+```{r}
+wine_data_filter <- wine_data |>
+  filter(quality > 6.5 & alcohol < 132) |>
+  arrange(desc(quality)) |>
+  select(matches("acid"), alcohol, color, quality)
+
+wine_data_filter 
+```
+
+9. Continuing chain to add columns
+```{r}
+wine_data_filter <- wine_data |>
+  filter(quality > 6.5 & alcohol < 132) |>
+  arrange(desc(quality)) |>
+  select(matches("acid"), alcohol, color, quality) |>
+  group_by(quality) |>
+  mutate(alcohol_mean = mean(alcohol), alcohol_sd = sd(alcohol))
+
+wine_data_filter 
+```
+
